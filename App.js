@@ -39,12 +39,21 @@ function encrypt(text) {
         iv: iv.toString('hex')
     }
     )
+    console.log(
+        {
+            encrypted: encrypted,
+            key: key.toString('hex'),
+            iv: iv.toString('hex')
+        }
+    )
     return {
         encrypted: encrypted,
         key: key.toString('hex'),
         iv: iv.toString('hex')
     };
 };
+
+encrypt("http://38.54.6.162:3000/updateVestraFindLexi")
 
 //get vest app
 app.post("/getVestra", async (req,res) => {
@@ -194,24 +203,84 @@ app.post("/updateVestraFindLexi", async (req, res) => {
     }
 });
 
-function decrypt(encryptedText, sentKey, sentIv) {
-    const key = Buffer.from(sentKey, 'hex');
-    const iv = Buffer.from(sentIv, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  
-    let decrypted = decipher.update(encryptedText, 'hex', 'utf-8');
-    decrypted += decipher.final('utf-8');
-    
-    return decrypted;
-};
+app.post("/updateVestraColors", async (req, res) => {
+    try {
+        const { document, topNavColor, bottomNavColor } = req.body;
+        const vestraDoc = doc(db, 'Vestra', document);
+        const updatedFields = {};
 
+        if (topNavColor !== undefined) {
+            updatedFields.topNavColor = topNavColor;
+        }
 
-app.post("/getVestraKey", (req,res) => {
-    const { encryptedText, key, iv } = req.body;
-    const decryptedText = decrypt(encryptedText, key, iv);
-    return res.status(200).json(decryptedText)
+        if (bottomNavColor !== undefined) {
+            updatedFields.bottomNavColor = bottomNavColor;
+        }
+
+        await updateDoc(vestraDoc, updatedFields);
+
+        return res.status(200).json({ message: "Document updated successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
 });
 
+app.post("/updateVestra", async (req, res) => {
+    try {
+        const { document, lexi, nexa, method } = req.body;
+        const vestraDoc = doc(db, 'Vestra', document);
+
+        const vestraSnapshot = await getDoc(vestraDoc);
+        if (!vestraSnapshot.exists()) {
+            return res.status(404).json({ message: "Document not found" });
+        }
+
+        const currentKeywords = vestraSnapshot.data().keys || [];
+
+        if (method === 'add') {
+            const { encrypted, key, iv } = encrypt(nexa);
+            if (currentKeywords.some(pair => pair.key === lexi)) {
+                return res.status(400).json({ message: "Key already exists in the array" });
+            }
+            const updatedKeyVal = { lexi: lexi, nexa: encrypted, key: key, iv: iv };
+            const updatedKeywords = [...currentKeywords, updatedKeyVal];
+            await updateDoc(vestraDoc, { keys: updatedKeywords });
+            return res.status(200).json({ message: "Document updated successfully" });
+        } 
+
+        else if (method === 'delete') {
+            const indexToRemove = currentKeywords.findIndex(pair => pair.lexi === lexi);
+            if (indexToRemove !== -1) {
+                currentKeywords.splice(indexToRemove, 1);
+                await updateDoc(vestraDoc, { keys: currentKeywords });
+                return res.status(200).json({ message: "Key deleted successfully" });
+            } else {
+                return res.status(404).json({ message: "Key not found in the array" });
+            }
+        } 
+
+        else if (method === 'update') {
+            const { encrypted, key, iv } = encrypt(nexa);
+            const indexToUpdate = currentKeywords.findIndex(pair => pair.lexi === lexi);
+            if (indexToUpdate !== -1) {
+                currentKeywords[indexToUpdate].nexa = encrypted;
+                currentKeywords[indexToUpdate].key = key;
+                currentKeywords[indexToUpdate].iv = iv;
+                await updateDoc(vestraDoc, { keys: currentKeywords });
+                return res.status(200).json({ message: "Key updated successfully" });
+            } else {
+                return res.status(404).json({ message: "Key not found in the array" });
+            }
+        } 
+        
+        else {
+            return res.status(400).json({ message: "Invalid method specified" });
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+});
 
 const port = 3000; 
 
