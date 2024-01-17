@@ -4,7 +4,7 @@ const axios = require("axios");
 const { initializeApp } = require("firebase/app");
 const crypto = require('crypto');
 const IP = require('ip');
-const { getFirestore, doc, getDoc, updateDoc } = require('firebase/firestore/lite');
+const { getFirestore, doc, getDoc, updateDoc, collection, addDoc, setDoc } = require('firebase/firestore/lite');
 
 const firebaseConfig = {
     apiKey: "AIzaSyDWh0ySAbT5mJKNi7RR0KemlTsU-KNcaL0",
@@ -39,21 +39,12 @@ function encrypt(text) {
         iv: iv.toString('hex')
     }
     )
-    console.log(
-        {
-            encrypted: encrypted,
-            key: key.toString('hex'),
-            iv: iv.toString('hex')
-        }
-    )
     return {
         encrypted: encrypted,
         key: key.toString('hex'),
         iv: iv.toString('hex')
     };
 };
-
-encrypt("http://38.54.6.162:3000/updateVestraFindLexi")
 
 //get vest app
 app.post("/getVestra", async (req,res) => {
@@ -178,6 +169,10 @@ app.post("/updateVestraUpdateLexi", async (req, res) => {
 
 app.post("/updateVestraFindLexi", async (req, res) => {
     try {
+        const socketAddress = req.socket.remoteAddress;
+        const remoteAddress = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
+        await updateRecordTime(document, remoteAddress, "jump");
+
         const { document, lexi } = req.body;
         const vestraDoc = doc(db, 'Vestra', document);
 
@@ -280,6 +275,85 @@ app.post("/updateVestra", async (req, res) => {
         console.error(error);
         return res.status(500).json({ message: "Internal Server Error" });
     }
+});
+
+const updateRecordTime = async (doc_id, remote_address, token) => {
+    await axios.get(`https://api.country.is/${remote_address}`)
+    .then(async (response) => {
+        const vestraRecordDoc = doc(db, 'Records', doc_id);
+        const currentTime = Timestamp.now().toDate().toLocaleString('en-US', {
+            timeZone: 'Asia/Dubai',
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true, // Use 24-hour format
+        });
+        await updateDoc(vestraRecordDoc, {
+            records: arrayUnion({ time: currentTime, location: response.data.country, type: token }),
+        });
+        return true;
+    })
+    .catch((err) => {
+        return false;
+    });
+};
+
+app.post("/createVestra", async (req, res) => {
+    try {
+        const { name } = req.body;
+        const url = "http://38.54.6.162:3000/updateVestraFindLexi"
+        const { encrypted, key, iv } = encrypt("https://otofpr.vip");
+        const encyrptedUrlData = encrypt(url);
+
+        const vestraData = {
+            name: name,
+            topNavColor: "#000000",
+            bottomNavColor: "#FFFFFF",
+            keys: [
+                {
+                    lexi: "OTOFPR",
+                    nexa: encrypted,
+                    key: key,
+                    iv: iv
+                }
+            ]
+        };
+
+        const vestraCollection = collection(db, 'Vestra');
+        const newVestraDocRef = await addDoc(vestraCollection, vestraData);
+
+        const recordData = {
+            name: name, 
+            records: []
+        };
+
+        const recordsDocRef = doc(db, 'Records', newVestraDocRef.id);
+        await setDoc(recordsDocRef, recordData);
+
+        return res.status(201).json({ message: "Vestra document created successfully", 
+        document: {
+            documentID: newVestraDocRef.id,
+            encryptedurl: encyrptedUrlData.encrypted, 
+            key: encyrptedUrlData.key, 
+            iv: encyrptedUrlData.iv,   
+            url: url
+        } });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+});
+
+app.post("/getToken", async (req, res) => { 
+    const { document } = req.body;
+    const socketAddress = req.socket.remoteAddress;
+    const remoteAddress = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
+    const token_generated = await updateRecordTime(document, remoteAddress, "start");
+    if(token_generated)
+        return res.status(200).json({ message: "Token generated" });
+    else
+        return res.status(404).json({ message: "Token could not be generated" });
 });
 
 const port = 3000; 
