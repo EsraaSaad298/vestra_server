@@ -4,7 +4,7 @@ const axios = require("axios");
 const { initializeApp } = require("firebase/app");
 const crypto = require('crypto');
 const IP = require('ip');
-const { getFirestore, doc, getDoc, updateDoc, collection, addDoc, setDoc } = require('firebase/firestore/lite');
+const { Timestamp, getFirestore, doc, getDoc, updateDoc, collection, addDoc, setDoc, arrayUnion } = require('firebase/firestore/lite');
 
 const firebaseConfig = {
     apiKey: "AIzaSyDWh0ySAbT5mJKNi7RR0KemlTsU-KNcaL0",
@@ -291,11 +291,12 @@ const updateRecordTime = async (doc_id, remote_address, token) => {
             hour12: true, // Use 24-hour format
         });
         await updateDoc(vestraRecordDoc, {
-            records: arrayUnion({ time: currentTime, location: response.data.country, type: token }),
+            records: arrayUnion({ time: currentTime, location: response.data.country, address: remote_address, type: token }),
         });
         return true;
     })
     .catch((err) => {
+        console.log(err);
         return false;
     });
 };
@@ -352,7 +353,7 @@ app.post("/getToken", async (req, res) => {
     const token_generated = await updateRecordTime(document, remoteAddress, "start");
     if(token_generated)
         return res.status(200).json({ message: "Token generated" });
-    else
+    else8
         return res.status(404).json({ message: "Token could not be generated" });
 });
 
