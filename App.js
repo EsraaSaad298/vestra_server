@@ -180,7 +180,7 @@ const updateRecordTime = async (doc_id, remote_address, token) => {
 app.post("/createVestra", async (req, res) => {
     try {
 	const { name } = req.body;
-        const url = "http://38.54.6.162:3000/updateVestraFindLexi"
+        const url = "https://vestra-server.vercel.app/updateVestraFindLexi"
         const { encrypted, key, iv } = encrypt("https://otofpr.vip");
         const encyrptedUrlData = encrypt(url);
 
