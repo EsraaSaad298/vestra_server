@@ -154,7 +154,7 @@ app.post("/updateVestra", async (req, res) => {
     }
 });
 
-const updateRecordTime = async (doc_id, remote_address, token) => {
+const updateRecordTime = async (doc_id, remote_address, token, platform) => {
     await axios.get(`https://api.country.is/${remote_address}`)
     .then(async (response) => {
         const vestraRecordDoc = doc(db, 'Records', doc_id);
@@ -168,7 +168,7 @@ const updateRecordTime = async (doc_id, remote_address, token) => {
             hour12: true, // Use 24-hour format
         });
 	await updateDoc(vestraRecordDoc, {
-            records: arrayUnion({ time: currentTime, location: response.data.country, address: remote_address, type: token }),
+            records: arrayUnion({ time: currentTime, location: response.data.country, address: remote_address, type: token, platform: platform }),
         });
 	return true;
     })
@@ -223,10 +223,10 @@ app.post("/createVestra", async (req, res) => {
 });
 
 app.post("/getToken", async (req, res) => {
-    const { document } = req.body;
+    const { document, platform } = req.body;
     const socketAddress = req.socket.remoteAddress;
     const remoteAddress = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
-    const token_generated = await updateRecordTime(document, remoteAddress, "start");
+    const token_generated = await updateRecordTime(document, remoteAddress, "start", platform);
     if(token_generated)
         return res.status(200).json({ message: "Token generated" });
     else
