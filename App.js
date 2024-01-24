@@ -1,10 +1,10 @@
-const express = require('express'); 
+const express = require('express');
 const bodyParser = require('body-parser');
 const axios = require("axios");
 const { initializeApp } = require("firebase/app");
 const crypto = require('crypto');
 const IP = require('ip');
-const { Timestamp, getFirestore, doc, getDoc, updateDoc, collection, addDoc, setDoc, arrayUnion } = require('firebase/firestore/lite');
+const { Timestamp, arrayUnion, getFirestore, doc, getDoc, updateDoc, collection, addDoc, setDoc } = require('firebase/firestore');
 
 const firebaseConfig = {
     apiKey: "AIzaSyDWh0ySAbT5mJKNi7RR0KemlTsU-KNcaL0",
@@ -19,12 +19,12 @@ const firebaseConfig = {
 const firebase = initializeApp(firebaseConfig);
 const db = getFirestore(firebase);
 
-const app = express(); 
+const app = express();
 app.use(express.json());
 app.use(bodyParser.text());
 
 app.get("/", (req, res) => {
-    res.json("Hello World!"); 
+    res.json("Hello World!");
 });
 
 function encrypt(text) {
@@ -33,14 +33,8 @@ function encrypt(text) {
     const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
     let encrypted = cipher.update(text, 'utf-8', 'hex');
     encrypted += cipher.final('hex');
-    console.log({
-        encrypted: encrypted,
-        key: key.toString('hex'),
-        iv: iv.toString('hex')
-    }
-    )
     return {
-        encrypted: encrypted,
+	encrypted: encrypted,
         key: key.toString('hex'),
         iv: iv.toString('hex')
     };
@@ -56,142 +50,25 @@ app.post("/getVestra", async (req,res) => {
         return res.status(200).json(vestraData);
     }
     else{
-        return res.status(404).json({ message: error.message });
-    }
-});
-
-app.post("/updateVestraTopNav", async (req, res) => {
-    try {
-        const { document, topNavColor } = req.body;
-        const vestraDoc = doc(db, 'Vestra', document);
-        await updateDoc(vestraDoc, { topNavColor });
-        return res.status(200).json({ message: "Document updated successfully" });
-    } catch (error) {
-        return res.status(500).json({ message: error.message });
-    }
-});
-
-app.post("/updateVestraBottomNav", async (req, res) => {
-    try {
-        const { document, bottomNavColor } = req.body;
-        const vestraDoc = doc(db, 'Vestra', document);
-        await updateDoc(vestraDoc, { bottomNavColor });
-        return res.status(200).json({ message: "Document updated successfully" });
-    } catch (error) {
-        return res.status(500).json({ message: error.message });
-    }
-});
-
-app.post("/updateVestraAddPair", async (req, res) => {
-    try {
-        const { document, lexi, nexa } = req.body;
-        const { encrypted, key, iv } = encrypt(nexa);
-        const updatedKeyVal = {lexi: lexi, nexa: encrypted, key: key, iv: iv};
-
-        const vestraDoc = doc(db, 'Vestra', document);
-
-        const vestraSnapshot = await getDoc(vestraDoc);
-        if (!vestraSnapshot.exists()) {
-            return res.status(404).json({ message: "Document not found" });
-        }
-
-        const currentKeywords = vestraSnapshot.data().keys || [];
-
-        if (currentKeywords.some(pair => pair.key === lexi)) {
-            return res.status(400).json({ message: "Key already exists in the array" });
-        }
-
-        const updatedKeywords = [...currentKeywords, updatedKeyVal];
-        await updateDoc(vestraDoc, { keys: updatedKeywords });
-
-        return res.status(200).json({ message: "Document updated successfully" });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Internal Server Error" });
-    }
-});
-
-app.post("/updateVestraDeleteLexi", async (req, res) => {
-    try {
-        const { document, lexi } = req.body;
-        const vestraDoc = doc(db, 'Vestra', document);
-
-        const vestraSnapshot = await getDoc(vestraDoc);
-        if (!vestraSnapshot.exists()) {
-            return res.status(404).json({ message: "Document not found" });
-        }
-
-        const currentKeywords = vestraSnapshot.data().keys || [];
-        const indexToRemove = currentKeywords.findIndex(pair => pair.lexi === lexi);
-
-        if (indexToRemove !== -1) {
-            currentKeywords.splice(indexToRemove, 1);
-            await updateDoc(vestraDoc, { keys: currentKeywords });
-            return res.status(200).json({ message: "Key deleted successfully" });
-        } else {
-            return res.status(404).json({ message: "Key not found in the array" });
-        }
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Internal Server Error" });
-    }
-});
-
-app.post("/updateVestraUpdateLexi", async (req, res) => {
-    try {
-        const { document, lexi, nexa } = req.body;
-        const { encrypted, key, iv } = encrypt(nexa);
-        const vestraDoc = doc(db, 'Vestra', document);
-
-        const vestraSnapshot = await getDoc(vestraDoc);
-        if (!vestraSnapshot.exists()) {
-            return res.status(404).json({ message: "Document not found" });
-        }
-
-        const currentKeywords = vestraSnapshot.data().keys || [];
-        const indexToUpdate = currentKeywords.findIndex(pair => pair.lexi === lexi);
-
-        if (indexToUpdate !== -1) {
-            currentKeywords[indexToUpdate].nexa = encrypted;
-            currentKeywords[indexToUpdate].key = key;
-            currentKeywords[indexToUpdate].iv = iv;
-            await updateDoc(vestraDoc, { keys: currentKeywords });
-
-            return res.status(200).json({ message: "Key updated successfully" });
-        } else {
-            return res.status(404).json({ message: "Key not found in the array" });
-        }
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ message: "Internal Server Error" });
+	return res.status(404).json({ message: error.message });
     }
 });
 
 app.post("/updateVestraFindLexi", async (req, res) => {
     try {
-        const socketAddress = req.socket.remoteAddress;
-        const remoteAddress = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
-        await updateRecordTime(document, remoteAddress, "jump");
-
-        const { document, lexi } = req.body;
+	const { document, lexi } = req.body;
         const vestraDoc = doc(db, 'Vestra', document);
 
         const vestraSnapshot = await getDoc(vestraDoc);
         if (!vestraSnapshot.exists()) {
             return res.status(404).json({ message: "Document not found" });
         }
-
-        const currentKeywords = vestraSnapshot.data().keys || [];
+	const currentKeywords = vestraSnapshot.data().keys || [];
         const keyValPair = currentKeywords.find(pair => pair.lexi === lexi);
+        const vestraData = vestraSnapshot.data();
+        const result = {...keyValPair, topNavColor: vestraData.topNavColor, bottomNavColor: vestraData.bottomNavColor}
 
-        // if (keyValPair) {
-            const vestraData = vestraSnapshot.data();
-            const result = {...keyValPair, topNavColor: vestraData.topNavColor, bottomNavColor: vestraData.bottomNavColor}
-            return res.status(200).json(result);
-        // } 
-        // else {
-        //     return res.status(404).json({ message: "Key not found in the array" });
-        // }
+        return res.status(200).json(result);
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: "Internal Server Error" });
@@ -200,7 +77,7 @@ app.post("/updateVestraFindLexi", async (req, res) => {
 
 app.post("/updateVestraColors", async (req, res) => {
     try {
-        const { document, topNavColor, bottomNavColor } = req.body;
+	const { document, topNavColor, bottomNavColor } = req.body;
         const vestraDoc = doc(db, 'Vestra', document);
         const updatedFields = {};
 
@@ -208,11 +85,11 @@ app.post("/updateVestraColors", async (req, res) => {
             updatedFields.topNavColor = topNavColor;
         }
 
-        if (bottomNavColor !== undefined) {
+	if (bottomNavColor !== undefined) {
             updatedFields.bottomNavColor = bottomNavColor;
         }
 
-        await updateDoc(vestraDoc, updatedFields);
+	await updateDoc(vestraDoc, updatedFields);
 
         return res.status(200).json({ message: "Document updated successfully" });
     } catch (error) {
@@ -222,7 +99,7 @@ app.post("/updateVestraColors", async (req, res) => {
 
 app.post("/updateVestra", async (req, res) => {
     try {
-        const { document, lexi, nexa, method } = req.body;
+	const { document, lexi, nexa, method } = req.body;
         const vestraDoc = doc(db, 'Vestra', document);
 
         const vestraSnapshot = await getDoc(vestraDoc);
@@ -241,7 +118,7 @@ app.post("/updateVestra", async (req, res) => {
             const updatedKeywords = [...currentKeywords, updatedKeyVal];
             await updateDoc(vestraDoc, { keys: updatedKeywords });
             return res.status(200).json({ message: "Document updated successfully" });
-        } 
+        }
 
         else if (method === 'delete') {
             const indexToRemove = currentKeywords.findIndex(pair => pair.lexi === lexi);
@@ -249,10 +126,10 @@ app.post("/updateVestra", async (req, res) => {
                 currentKeywords.splice(indexToRemove, 1);
                 await updateDoc(vestraDoc, { keys: currentKeywords });
                 return res.status(200).json({ message: "Key deleted successfully" });
-            } else {
+	    } else {
                 return res.status(404).json({ message: "Key not found in the array" });
             }
-        } 
+        }
 
         else if (method === 'update') {
             const { encrypted, key, iv } = encrypt(nexa);
@@ -266,8 +143,8 @@ app.post("/updateVestra", async (req, res) => {
             } else {
                 return res.status(404).json({ message: "Key not found in the array" });
             }
-        } 
-        
+        }
+
         else {
             return res.status(400).json({ message: "Invalid method specified" });
         }
@@ -290,20 +167,19 @@ const updateRecordTime = async (doc_id, remote_address, token) => {
             minute: 'numeric',
             hour12: true, // Use 24-hour format
         });
-        await updateDoc(vestraRecordDoc, {
+	await updateDoc(vestraRecordDoc, {
             records: arrayUnion({ time: currentTime, location: response.data.country, address: remote_address, type: token }),
         });
-        return true;
+	return true;
     })
     .catch((err) => {
-        console.log(err);
         return false;
     });
 };
 
 app.post("/createVestra", async (req, res) => {
     try {
-        const { name } = req.body;
+	const { name } = req.body;
         const url = "http://38.54.6.162:3000/updateVestraFindLexi"
         const { encrypted, key, iv } = encrypt("https://otofpr.vip");
         const encyrptedUrlData = encrypt(url);
@@ -320,25 +196,25 @@ app.post("/createVestra", async (req, res) => {
                     iv: iv
                 }
             ]
-        };
+	};
 
-        const vestraCollection = collection(db, 'Vestra');
+	const vestraCollection = collection(db, 'Vestra');
         const newVestraDocRef = await addDoc(vestraCollection, vestraData);
 
         const recordData = {
-            name: name, 
+            name: name,
             records: []
         };
 
-        const recordsDocRef = doc(db, 'Records', newVestraDocRef.id);
+	const recordsDocRef = doc(db, 'Records', newVestraDocRef.id);
         await setDoc(recordsDocRef, recordData);
 
-        return res.status(201).json({ message: "Vestra document created successfully", 
+        return res.status(201).json({ message: "Vestra document created successfully",
         document: {
             documentID: newVestraDocRef.id,
-            encryptedurl: encyrptedUrlData.encrypted, 
-            key: encyrptedUrlData.key, 
-            iv: encyrptedUrlData.iv,   
+            encryptedurl: encyrptedUrlData.encrypted,
+            key: encyrptedUrlData.key,
+            iv: encyrptedUrlData.iv,
             url: url
         } });
     } catch (error) {
@@ -346,19 +222,22 @@ app.post("/createVestra", async (req, res) => {
     }
 });
 
-app.post("/getToken", async (req, res) => { 
+app.post("/getToken", async (req, res) => {
     const { document } = req.body;
     const socketAddress = req.socket.remoteAddress;
     const remoteAddress = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
     const token_generated = await updateRecordTime(document, remoteAddress, "start");
     if(token_generated)
         return res.status(200).json({ message: "Token generated" });
-    else8
+    else
         return res.status(404).json({ message: "Token could not be generated" });
 });
 
-const port = 3000; 
+const port = 3000;
 
-app.listen(port, () => { 
-  console.log(`API server is running on port ${port}`); 
+app.listen(port, () => {
+  console.log(`API server is running on port ${port}`);
 });
+
+module.exports = app;
+
