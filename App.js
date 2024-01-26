@@ -229,7 +229,7 @@ app.post("/getToken", async (req, res) => {
     const remoteAddress = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
     const token_generated = await updateRecordTime(document, remoteAddress, "start", platform);
     if(token_generated)
-        return res.status(200).json({ message: "Token generated" });
+        return res.status(200).json({ message: "Token generated", address: remoteAddress });
     else
         return res.status(404).json({ message: "Token could not be generated", address: remoteAddress });
 });
