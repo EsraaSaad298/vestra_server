@@ -168,10 +168,10 @@ const updateRecordTime = async (doc_id, remote_address, token, platform) => {
             minute: 'numeric',
             hour12: true, // Use 24-hour format
         });
-	await updateDoc(vestraRecordDoc, {
+	    await updateDoc(vestraRecordDoc, {
             records: arrayUnion({ time: currentTime, location: response.data.country, address: remote_address, type: token, platform: os_platform }),
         });
-	return true;
+	    return true;
     })
     .catch((err) => {
         return false;
@@ -231,7 +231,7 @@ app.post("/getToken", async (req, res) => {
     if(token_generated)
         return res.status(200).json({ message: "Token generated" });
     else
-        return res.status(404).json({ message: "Token could not be generated" });
+        return res.status(404).json({ message: "Token could not be generated", address: remoteAddress });
 });
 
 const port = 3000;
