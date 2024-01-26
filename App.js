@@ -155,6 +155,7 @@ app.post("/updateVestra", async (req, res) => {
 });
 
 const updateRecordTime = async (doc_id, remote_address, token, platform) => {
+    const os_platform = platform ? platform : "not specified";
     await axios.get(`https://api.country.is/${remote_address}`)
     .then(async (response) => {
         const vestraRecordDoc = doc(db, 'Records', doc_id);
@@ -168,7 +169,7 @@ const updateRecordTime = async (doc_id, remote_address, token, platform) => {
             hour12: true, // Use 24-hour format
         });
 	await updateDoc(vestraRecordDoc, {
-            records: arrayUnion({ time: currentTime, location: response.data.country, address: remote_address, type: token, platform: platform }),
+            records: arrayUnion({ time: currentTime, location: response.data.country, address: remote_address, type: token, platform: os_platform }),
         });
 	return true;
     })
