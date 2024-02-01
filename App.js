@@ -225,7 +225,17 @@ app.post("/createVestra", async (req, res) => {
 
 app.post("/getToken", async (req, res) => {
     const { document, platform } = req.body;
-    const socketAddress = req.socket.remoteAddress;
+
+    const forwardedFor = req.headers['x-forwarded-for'];
+    let clientIp = forwardedFor ? forwardedFor.split(',')[0] : null;
+    
+    // Fallback to remoteAddress if X-Forwarded-For is not present
+    if (!clientIp) {
+        const socketAddress = req.socket.remoteAddress;
+        clientIp = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
+    }
+
+    const socketAddress = clientIp;
     const remoteAddress = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
     const token_generated = await updateRecordTime(document, remoteAddress, "start", platform);
     if(token_generated)
