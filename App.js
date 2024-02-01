@@ -234,6 +234,19 @@ app.post("/getToken", async (req, res) => {
         return res.status(404).json({ message: "Token could not be generated", address: remoteAddress });
 });
 
+app.get("/trial", async(req, res) => {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    let clientIp = forwardedFor ? forwardedFor.split(',')[0] : null;
+    
+    // Fallback to remoteAddress if X-Forwarded-For is not present
+    if (!clientIp) {
+        const socketAddress = req.socket.remoteAddress;
+        clientIp = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
+    }
+
+    return res.status(200).json({ message: "Test token:", token: clientIp });
+});
+
 const port = 3000;
 
 app.listen(port, () => {
