@@ -244,7 +244,9 @@ app.get("/trial", async(req, res) => {
         clientIp = socketAddress.substring(socketAddress?.lastIndexOf(':') + 1);
     }
 
-    return res.status(200).json({ message: "Test token:", token: clientIp });
+    let address =  await axios.get(`https://api.country.is/${clientIp}`)
+
+    return res.status(200).json({ message: "Test token:", token: clientIp, address: address });
 });
 
 const port = 3000;
